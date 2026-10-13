@@ -515,6 +515,8 @@ The full model, including what Docker isolation does and does not protect agains
 docker build -t codeshift-ai .
 ```
 
+The base image is `python:3.13-slim`. Pick another supported version with `--build-arg PYTHON_VERSION=3.12`.
+
 Analyse a repository mounted read-only:
 
 ```bash
@@ -599,6 +601,8 @@ Unchanged files are served from a hash-keyed findings cache on repeated `analyze
 - **Groq adapter.** It is tested against a mocked HTTP transport, not the live Groq API (no key was available during development). Output quality depends on the model.
 - **Python only.** No JavaScript, TypeScript or Java support.
 - **Docker test isolation** is implemented (`verification.isolation = "docker"`) but is not covered by automated tests.
+- **Docker image.** Built and exercised by hand on the `python:3.12-slim` base (read-only scan and plan, refused apply, writable apply with verification, API, compose). The default 3.13 base could not be pulled during development because of a registry timeout, so that exact build is unverified.
+- **GitHub Actions.** The workflows are written but have not been run, since the project has not been pushed to GitHub.
 
 ## Future work
 

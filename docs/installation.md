@@ -32,7 +32,7 @@ uv venv --python 3.13 && uv pip install -e ".[dev]"
 `requirements.lock` pins every runtime dependency. It was generated with:
 
 ```bash
-uv pip compile pyproject.toml --extra demo --python-version 3.13 -o requirements.lock
+uv pip compile pyproject.toml --extra demo --universal --python-version 3.12 -o requirements.lock
 ```
 
 ## Groq API key
