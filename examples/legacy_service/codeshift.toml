@@ -1,0 +1,14 @@
+[project]
+name = "legacy-order-service"
+target_python = "3.12"
+
+[analysis]
+exclude = []
+
+[verification]
+run_tests = true
+run_ruff = true
+run_mypy = false
+
+[llm]
+enabled = false
