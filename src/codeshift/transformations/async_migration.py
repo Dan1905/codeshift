@@ -125,11 +125,21 @@ class _FunctionSplicer(_QualnameMixin):
         )
 
 
-def splice_function(source: str, qualname: str, replacement: ValidatedReplacement) -> str:
+UNUSED_AFTER_SPLICE: set[tuple[str, str | None]] = {
+    ("requests", None),
+    ("time", None),
+    ("time", "sleep"),
+}
+
+
+def splice_function(
+    source: str, qualname: str, replacement: ValidatedReplacement, finalize: bool = True
+) -> str:
     """Replace the body of `qualname` in `source`.
 
     Name, parameters, decorators and annotations come from the original, so an
-    accepted replacement cannot change the function's interface.
+    accepted replacement cannot change the function's interface. With
+    `finalize=False` imports are left for the caller to fix once per file.
     """
     parsed = parse_cst(replacement.replacement_code)
     functions = [stmt for stmt in parsed.body if isinstance(stmt, cst.FunctionDef)]
@@ -141,8 +151,9 @@ def splice_function(source: str, qualname: str, replacement: ValidatedReplacemen
         raise TransformError(
             f"expected exactly one definition of {qualname}, found {splicer.count}"
         )
-    unused = {("requests", None), ("time", None), ("time", "sleep")}
-    return manage_imports(updated, replacement.required_imports, unused).code
+    if not finalize:
+        return updated.code
+    return manage_imports(updated, replacement.required_imports, UNUSED_AFTER_SPLICE).code
 
 
 class _Propagator(CountingTransformer, _QualnameMixin):
@@ -473,9 +484,10 @@ class AsyncMigrator:
             result.rules_by_file.clear()
             result.locations.clear()
         result.sources = final
+        viable_ids = {id(group) for group in viable}
 
         for index, group in enumerate(sorted(groups, key=lambda g: g.seeds), start=1):
-            converted = group in viable
+            converted = id(group) in viable_ids
             labels = sorted(f"{s.label()}" for s in group.sites)
             record = ConversionGroup(
                 id=f"grp_{index}",
@@ -513,12 +525,20 @@ class AsyncMigrator:
         convert: set[str] = set().union(*(g.members for g in viable))
         working = dict(sources)
 
-        # Step 1: splice validated function replacements.
+        # Step 1: splice validated function replacements, then fix imports once per file.
+        needed: dict[str, set[tuple[str, str | None]]] = {}
         for group in viable:
             for function_id, replacement in group.replacements:
                 info = graph.functions[function_id]
-                working[info.file] = splice_function(working[info.file], info.qualname, replacement)
+                working[info.file] = splice_function(
+                    working[info.file], info.qualname, replacement, finalize=False
+                )
+                needed.setdefault(info.file, set()).update(replacement.required_imports)
                 result.llm_files.add(info.file)
+        for path, imports in needed.items():
+            working[path] = manage_imports(
+                parse_cst(working[path]), imports, UNUSED_AFTER_SPLICE
+            ).code
 
         # Step 2: re-analyse so positions match the spliced sources, then propagate.
         modules = {

@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Formatting
+        run: ruff format --check src tests
+      - name: Lint
+        run: ruff check src tests
+      - name: Type checking
+        run: mypy
+      - name: Unit tests
+        run: pytest tests/unit --cov=codeshift --cov-report=
+      - name: Integration and end-to-end tests
+        run: pytest tests/integration tests/e2e --cov=codeshift --cov-append --cov-report=term --cov-report=xml
+      - name: Upload coverage report
+        if: matrix.python-version == '3.13'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          twine check dist/*
+      - name: Install the wheel in a clean environment and run it
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/pip install dist/*.whl
+          /tmp/clean/bin/codeshift --version
+          /tmp/clean/bin/codeshift scan examples/legacy_service
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t codeshift-ai .
+      - name: Scan a read-only mount
+        run: docker run --rm -v "$PWD/examples/legacy_service:/workspace:ro" codeshift-ai scan /workspace
+      - name: Writes to a read-only mount must fail
+        run: |
+          docker volume create codeshift-ci-data
+          docker run --rm -v "$PWD/examples/legacy_service:/workspace:ro" -v codeshift-ci-data:/data \
+            codeshift-ai plan /workspace --llm sample
+          if docker run --rm -v "$PWD/examples/legacy_service:/workspace:ro" -v codeshift-ci-data:/data \
+            codeshift-ai apply --yes; then
+            echo "apply unexpectedly succeeded on a read-only mount" && exit 1
+          fi

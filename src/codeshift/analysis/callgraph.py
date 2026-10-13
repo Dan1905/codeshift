@@ -137,6 +137,7 @@ class CallGraph:
         self.value_refs: dict[str, list[str]] = defaultdict(list)
         self._module_index: dict[str, set[str]] = defaultdict(set)
         self._methods_by_name: dict[str, list[str]] = defaultdict(list)
+        self._sites_by_callee: dict[str, list[CallSite]] | None = None
         self._build()
 
     # -- construction -------------------------------------------------
@@ -311,7 +312,12 @@ class CallGraph:
     # -- queries ------------------------------------------------------
 
     def callers_of(self, function_id: str) -> list[CallSite]:
-        return [site for site in self.call_sites if site.callee == function_id]
+        if self._sites_by_callee is None:
+            index: dict[str, list[CallSite]] = defaultdict(list)
+            for site in self.call_sites:
+                index[site.callee].append(site)
+            self._sites_by_callee = index
+        return self._sites_by_callee.get(function_id, [])
 
     def ambiguous_method_name(self, info: FunctionInfo) -> bool:
         return info.class_name is not None and len(self._methods_by_name.get(info.name, [])) > 1

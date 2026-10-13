@@ -1,0 +1,42 @@
+# Example project configuration with a project-specific rule.
+# Copy into the root of a repository as `codeshift.toml`.
+
+[project]
+name = "example-project"
+target_python = "3.12"
+
+[analysis]
+exclude = ["migrations/**", "generated/**"]
+
+[rules]
+# Pack names or rule ids. Empty `enable` means every registered rule.
+disable = ["python.except.bare"]
+
+# `rename-call` renames a callable within the same module/namespace. Calls are
+# matched through imports, so `other.fetch_all()` is left alone.
+[[rules.custom]]
+id = "acme.fetch-all"
+kind = "rename-call"
+source = "acme_sdk.fetch_all"
+target = "acme_sdk.fetch_page"
+description = "acme_sdk 4.0 removes fetch_all(); fetch_page() is the replacement."
+risk = "medium"
+
+[migrations]
+auto_apply_low_risk = false
+require_review_for_llm_changes = true
+max_files_per_run = 200
+
+[verification]
+run_tests = true
+run_ruff = true
+run_mypy = false
+fail_on_test_failure = true
+
+[llm]
+enabled = true
+provider = "groq"
+model = "llama-3.3-70b-versatile"
+timeout_seconds = 60
+max_retries = 2
+fallback = "sample"

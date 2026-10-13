@@ -1,0 +1,45 @@
+# Example: run CodeShift as a build step.
+# Fails the build when the bundled service still contains migration candidates
+# the engine can fix, and uploads the proposed diff as an artifact. Nothing is
+# written to the checked-out sources.
+name: CodeShift build step
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "examples/legacy_service/**"
+
+permissions:
+  contents: read
+
+jobs:
+  migrate-check:
+    runs-on: ubuntu-latest
+    env:
+      CODESHIFT_HOME: ${{ runner.temp }}/codeshift
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install CodeShift
+        run: pip install -e ".[demo]"
+      - name: Plan the migration (offline provider, no API key needed)
+        run: codeshift plan examples/legacy_service --llm sample
+      - name: Verify the proposal in a temporary copy, including tests
+        run: codeshift verify --run-tests || test $? -eq 3
+      - name: Export diff and report
+        if: always()
+        run: |
+          codeshift diff > codeshift.diff
+          codeshift report --format json --output codeshift-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codeshift-proposal
+          path: |
+            codeshift.diff
+            codeshift-report.json
+      - name: Fail the build while migration candidates remain
+        run: codeshift analyze examples/legacy_service --rules deprecated-api --fail-on-findings

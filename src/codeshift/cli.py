@@ -184,7 +184,7 @@ def scan(
         console.print_json(json.dumps(payload))
         return
     console.print("[bold]CodeShift AI - Repository Analysis[/bold]\n")
-    console.print(f"Repository: {manifest.root}")
+    console.print(f"Repository: {manifest.root}", soft_wrap=True)
     console.print(f"Git repository: {'yes' if manifest.is_git_repo else 'no'}")
     console.print(f"Python files discovered: {len(manifest.files)}")
     console.print(f"Files parsed successfully: {manifest.parsed_count}")
@@ -326,7 +326,7 @@ def plan(
 def _print_plan(record: RunRecord) -> None:
     plan_ = record.plan
     console.print(f"[bold]Migration plan {plan_.run_id}[/bold]")
-    console.print(f"Repository: {plan_.repo}")
+    console.print(f"Repository: {plan_.repo}", soft_wrap=True)
     console.print(f"Files analyzed: {plan_.files_analyzed}")
     console.print(f"Findings: {len(plan_.findings)}")
     for rule_id, count in count_by_rule(plan_.findings).items():

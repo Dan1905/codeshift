@@ -1,0 +1,26 @@
+# REST API with the target repository mounted read-only.
+# Analysis and planning work as is. To apply migrations, change `:ro` to `:rw`
+# for the workspace volume: an explicit, visible decision.
+services:
+  codeshift:
+    build: .
+    image: codeshift-ai
+    ports:
+      - "8000:8000"
+    environment:
+      # Read from your shell or a local .env file. Never baked into the image.
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      CODESHIFT_API_TOKEN: ${CODESHIFT_API_TOKEN:-}
+    volumes:
+      - ${TARGET_REPO:-./examples/legacy_service}:/workspace:ro
+      - codeshift-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  codeshift-data:

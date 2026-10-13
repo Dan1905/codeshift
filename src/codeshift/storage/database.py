@@ -78,6 +78,11 @@ class RunStore:
     def close(self) -> None:
         self._connection.close()
 
+    def __del__(self) -> None:
+        connection = getattr(self, "_connection", None)
+        if connection is not None:
+            connection.close()
+
     def save(self, record: RunRecord) -> None:
         record.updated_at = utc_now()
         with self._connection:
