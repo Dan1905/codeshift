@@ -484,6 +484,18 @@ def history(
     if not records:
         console.print("No migration runs recorded.")
         return
+    if console.width < 100:
+        # Narrow terminals: one block per run instead of a squashed table.
+        for record in records:
+            verification = record.verification.overall_status.value if record.verification else "-"
+            console.print(f"[bold]{record.run_id}[/bold]", highlight=False)
+            console.print(
+                f"  {record.plan.created_at}  status={record.status.value}  "
+                f"files={len(record.plan.changes)}  verification={verification}",
+                highlight=False,
+            )
+            console.print(f"  {record.plan.repo}", highlight=False, soft_wrap=True)
+        return
     table = Table(header_style="bold")
     table.add_column("Run ID", no_wrap=True)
     for column in ("Created (UTC)", "Status", "Files", "Verification", "Repository"):

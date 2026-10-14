@@ -124,7 +124,13 @@ See [docs/installation.md](docs/installation.md) for Docker and `uv` instruction
 
 The output below is copied from real runs on Python 3.13 (macOS, Apple silicon). Paths are shortened to `/path/to`, and the plan's per-function notes are trimmed.
 
-Work on a copy so the example stays pristine:
+To run every step below in one go on a throwaway copy:
+
+```bash
+./scripts/demo.sh
+```
+
+To run the steps by hand, work on a copy so the example stays pristine:
 
 ```bash
 cp -R examples/legacy_service /tmp/legacy_service && cd /tmp
