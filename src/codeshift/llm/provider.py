@@ -97,6 +97,11 @@ class OpenAICompatibleProvider(LLMProvider):
                         f"{self.name} rejected the credentials (HTTP {response.status_code})"
                     )
                 last_error = f"HTTP {response.status_code}"
+                if response.status_code == 404:
+                    raise LLMUnavailableError(
+                        f"{self.name} has no model '{self.model}' available to this key "
+                        "(HTTP 404). Set llm.model or CODESHIFT_LLM_MODEL to a current model."
+                    )
                 if response.status_code not in RETRYABLE_STATUS:
                     raise LLMError(f"{self.name} request failed: {last_error}")
                 retry_after = response.headers.get("retry-after", "")

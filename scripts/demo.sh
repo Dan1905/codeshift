@@ -5,6 +5,9 @@ cd "$(dirname "$0")/.."
 ROOT="$PWD"
 CS="$ROOT/.venv/bin/codeshift"
 [ -x "$CS" ] || CS="codeshift"
+# Load .env (e.g. GROQ_API_KEY) if present. DEMO_LLM picks the provider: sample (default) or groq.
+if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
+LLM="${DEMO_LLM:-sample}"
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/codeshift-demo.XXXXXX")"
 export CODESHIFT_HOME="$WORK/state"
@@ -24,8 +27,8 @@ step() {
 step "1. Scan the repository (read-only)" "codeshift scan ./legacy_service"
 "$CS" scan ./legacy_service
 
-step "2. Plan the migration (sync-to-async + deprecated APIs)" "codeshift plan ./legacy_service --llm sample"
-"$CS" plan ./legacy_service --llm sample
+step "2. Plan the migration (sync-to-async + deprecated APIs)" "codeshift plan ./legacy_service --llm $LLM"
+"$CS" plan ./legacy_service --llm "$LLM"
 
 step "3. Review the proposed diff" "codeshift diff"
 "$CS" diff

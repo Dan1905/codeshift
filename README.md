@@ -130,6 +130,12 @@ To run every step below in one go on a throwaway copy:
 ./scripts/demo.sh
 ```
 
+With a Groq key in `.env` (copy `.env.example`), run the same walkthrough against the real model:
+
+```bash
+DEMO_LLM=groq ./scripts/demo.sh
+```
+
 To run the steps by hand, work on a copy so the example stays pristine:
 
 ```bash
@@ -445,7 +451,7 @@ isolation = "none"           # or "docker"
 [llm]
 enabled = false
 provider = "groq"            # "groq", "openai-compatible" or "sample"
-model = ""                   # default for groq: llama-3.3-70b-versatile
+model = ""                   # default for groq: openai/gpt-oss-120b
 timeout_seconds = 60
 max_retries = 2
 max_context_chars = 24000

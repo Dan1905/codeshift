@@ -36,7 +36,7 @@ fail_on_test_failure = true
 [llm]
 enabled = true
 provider = "groq"
-model = "llama-3.3-70b-versatile"
+model = "openai/gpt-oss-120b"
 timeout_seconds = 60
 max_retries = 2
 fallback = "sample"

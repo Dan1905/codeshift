@@ -18,7 +18,7 @@ CONFIG_FILENAME = "codeshift.toml"
 PROVIDER_DEFAULTS: dict[str, dict[str, str]] = {
     "groq": {
         "base_url": "https://api.groq.com/openai/v1",
-        "model": "llama-3.3-70b-versatile",
+        "model": "openai/gpt-oss-120b",
         "key_env": "GROQ_API_KEY",
     },
     "openai-compatible": {"base_url": "", "model": "", "key_env": "CODESHIFT_LLM_API_KEY"},
