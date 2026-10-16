@@ -1,7 +1,7 @@
 # Example: run CodeShift as a build step.
-# Fails the build when the bundled service still contains migration candidates
-# the engine can fix, and uploads the proposed diff as an artifact. Nothing is
-# written to the checked-out sources.
+# Migrates a scratch copy of the bundled service (the checkout is never modified),
+# requires the migrated code to pass verification including its tests, checks
+# that no fixable deprecated APIs remain, and uploads the diff and report.
 name: CodeShift build step
 
 on:
@@ -9,6 +9,8 @@ on:
   pull_request:
     paths:
       - "examples/legacy_service/**"
+      - "src/**"
+      - ".github/workflows/codeshift-build-step.yml"
 
 permissions:
   contents: read
@@ -16,8 +18,6 @@ permissions:
 jobs:
   migrate-check:
     runs-on: ubuntu-latest
-    env:
-      CODESHIFT_HOME: ${{ runner.temp }}/codeshift
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,15 +25,22 @@ jobs:
           python-version: "3.13"
       - name: Install CodeShift
         run: pip install -e ".[demo]"
+      - name: Prepare a scratch copy and state directory
+        run: |
+          echo "CODESHIFT_HOME=$RUNNER_TEMP/codeshift-state" >> "$GITHUB_ENV"
+          echo "SERVICE=$RUNNER_TEMP/legacy_service" >> "$GITHUB_ENV"
+          cp -R examples/legacy_service "$RUNNER_TEMP/legacy_service"
       - name: Plan the migration (offline provider, no API key needed)
-        run: codeshift plan examples/legacy_service --llm sample
-      - name: Verify the proposal in a temporary copy, including tests
-        run: codeshift verify --run-tests || test $? -eq 3
+        run: codeshift plan "$SERVICE" --llm sample
+      - name: Apply to the scratch copy
+        run: codeshift apply --yes --non-interactive
+      - name: Verify, including the service's tests (must pass)
+        run: codeshift verify --run-tests
       - name: Export diff and report
         if: always()
         run: |
-          codeshift diff > codeshift.diff
-          codeshift report --format json --output codeshift-report.json
+          codeshift diff > codeshift.diff || true
+          codeshift report --format json --output codeshift-report.json || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -41,5 +48,6 @@ jobs:
           path: |
             codeshift.diff
             codeshift-report.json
-      - name: Fail the build while migration candidates remain
-        run: codeshift analyze examples/legacy_service --rules deprecated-api --fail-on-findings
+          if-no-files-found: warn
+      - name: No fixable deprecated APIs remain after migration
+        run: codeshift analyze "$SERVICE" --rules deprecated-api --fail-on-findings
